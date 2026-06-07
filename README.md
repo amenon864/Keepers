@@ -7,7 +7,24 @@ Photo analysis is planned to run locally in the browser using a C++ image-proces
 ## Repository Structure
 
 - `app/` contains the Vite React TypeScript frontend.
-- `engine/` contains the future C++ image-processing engine structure.
+- `engine/` contains the native C++ image-processing engine library and tests.
+
+## Native Engine Development
+
+Configure, build, and test the native C++ engine:
+
+```bash
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Build without tests:
+
+```bash
+cmake -S . -B build-no-tests -DBUILD_TESTING=OFF
+cmake --build build-no-tests
+```
 
 ## Development Status
 
