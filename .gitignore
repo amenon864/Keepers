@@ -38,6 +38,7 @@ Testing/
 *.so
 
 # Emscripten artifacts
+app/src/wasm/generated/
 *.data
 *.html.mem
 *.js.mem

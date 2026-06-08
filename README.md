@@ -62,9 +62,27 @@ Run the Node smoke test against a built module:
 node scripts/smoke-test-wasm.mjs build-wasm/wasm/keepers.mjs
 ```
 
-The generated `keepers.mjs` and `keepers.wasm` artifacts remain inside the
-ignored build directory and are not committed. The frontend is not integrated
-with the WebAssembly module yet.
+The generated `keepers.mjs` and `keepers.wasm` artifacts remain inside ignored
+directories and are not committed.
+
+## Frontend Development
+
+Build and copy the WebAssembly browser artifacts before running browser
+functionality that uses the Keepers engine:
+
+```bash
+./scripts/build-wasm.sh
+./scripts/copy-wasm-to-app.sh
+
+cd app
+npm run dev
+```
+
+The copy step places generated artifacts under `app/src/wasm/generated/`. That
+directory is treated as generated output. The frontend TypeScript client in
+`app/src/wasm/` wraps the C ABI, handles memory allocation and status-code
+translation, and exposes typed methods for analysis, similarity grouping, and
+quality ranking. User-facing upload integration is not implemented yet.
 
 ## Development Status
 

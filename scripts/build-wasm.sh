@@ -23,3 +23,5 @@ else
     echo "Node.js not found; run this smoke test after installing Node:"
     echo "node \"$repository_root/scripts/smoke-test-wasm.mjs\" \"$module_path\""
 fi
+
+echo "Run ./scripts/copy-wasm-to-app.sh to make the module available to the frontend."
