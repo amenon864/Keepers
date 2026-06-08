@@ -16,6 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
 include(Catch)
 
 add_executable(keepers_engine_tests
+    difference_hash_test.cpp
     grayscale_test.cpp
     image_metrics_test.cpp
     image_view_test.cpp

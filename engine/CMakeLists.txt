@@ -1,4 +1,5 @@
 add_library(keepers_engine STATIC
+    src/difference_hash.cpp
     src/grayscale.cpp
     src/image_metrics.cpp
     src/image_view.cpp
