@@ -1,6 +1,8 @@
 # Keepers
 
-Keepers is a local-first browser application that helps users identify the strongest photos from a burst of similar shots. Its image-analysis engine is written in C++ and will be compiled to WebAssembly for in-browser processing.
+[![CI](https://github.com/amenon864/Keepers/actions/workflows/ci.yml/badge.svg)](https://github.com/amenon864/Keepers/actions/workflows/ci.yml)
+
+Keepers is a local-first browser application that helps users identify the strongest photos from a burst of similar shots. Its image-analysis engine is written in C++ and is compiled to WebAssembly for in-browser processing.
 
 ## Repository Structure
 
@@ -66,4 +68,4 @@ with the WebAssembly module yet.
 
 ## Development Status
 
-The native C++ engine currently supports validated RGB/RGBA image views, grayscale conversion, Laplacian-variance sharpness scoring, and exposure and percentile-contrast metrics.
+The native C++ engine currently supports image validation, grayscale conversion, sharpness, exposure, and contrast analysis, difference hashing, similarity grouping, quality ranking, per-photo analysis, and a tested WebAssembly C ABI.
