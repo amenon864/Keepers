@@ -4,6 +4,7 @@ add_library(keepers_engine STATIC
     src/image_metrics.cpp
     src/image_view.cpp
     src/sharpness.cpp
+    src/similarity_grouping.cpp
     src/version.cpp
 )
 

@@ -21,6 +21,7 @@ add_executable(keepers_engine_tests
     image_metrics_test.cpp
     image_view_test.cpp
     sharpness_test.cpp
+    similarity_grouping_test.cpp
     version_test.cpp
 )
 
