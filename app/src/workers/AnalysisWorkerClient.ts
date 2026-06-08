@@ -1,19 +1,31 @@
 import type { DecodedPhoto } from "../photos/types";
-import type { PhotoAnalysis } from "../wasm/types";
+import type {
+    PhotoAnalysis,
+    PhotoHash,
+    SimilarityGroup
+} from "../wasm/types";
 import type {
     AnalysisWorkerRequest,
     AnalysisWorkerResponse
 } from "./analysisProtocol";
 
-interface PendingAnalysisRequest {
-    photoId: number;
+interface PendingAnalyzePhotoRequest {
+    type: "analyze-photo";
     resolve: (analysis: PhotoAnalysis) => void;
     reject: (error: Error) => void;
 }
 
+interface PendingGroupPhotosRequest {
+    type: "group-photos";
+    resolve: (groups: SimilarityGroup[]) => void;
+    reject: (error: Error) => void;
+}
+
+type PendingRequest = PendingAnalyzePhotoRequest | PendingGroupPhotosRequest;
+
 export class AnalysisWorkerClient {
     private readonly worker: Worker;
-    private readonly pendingRequests = new Map<number, PendingAnalysisRequest>();
+    private readonly pendingRequests = new Map<number, PendingRequest>();
     private nextRequestId = 1;
     private isTerminated = false;
 
@@ -58,7 +70,7 @@ export class AnalysisWorkerClient {
 
         return new Promise((resolve, reject) => {
             this.pendingRequests.set(requestId, {
-                photoId: photo.id,
+                type: "analyze-photo",
                 resolve,
                 reject
             });
@@ -71,6 +83,46 @@ export class AnalysisWorkerClient {
                     error instanceof Error
                         ? error
                         : new Error("Unable to send photo pixels to the worker.")
+                );
+            }
+        });
+    }
+
+    groupPhotos(
+        photos: readonly PhotoHash[],
+        maximumDistance: number
+    ): Promise<SimilarityGroup[]> {
+        if (this.isTerminated) {
+            return Promise.reject(
+                new Error("The analysis worker has already been stopped.")
+            );
+        }
+
+        const requestId = this.nextRequestId;
+        this.nextRequestId += 1;
+
+        const request: AnalysisWorkerRequest = {
+            type: "group-photos",
+            requestId,
+            photos: [...photos],
+            maximumDistance
+        };
+
+        return new Promise((resolve, reject) => {
+            this.pendingRequests.set(requestId, {
+                type: "group-photos",
+                resolve,
+                reject
+            });
+
+            try {
+                this.worker.postMessage(request);
+            } catch (error) {
+                this.pendingRequests.delete(requestId);
+                reject(
+                    error instanceof Error
+                        ? error
+                        : new Error("Unable to send photo hashes to the worker.")
                 );
             }
         });
@@ -108,10 +160,20 @@ export class AnalysisWorkerClient {
 
         switch (response.type) {
             case "analysis-success":
-                pending.resolve(response.analysis);
+                if (pending.type === "analyze-photo") {
+                    pending.resolve(response.analysis);
+                }
                 break;
             case "analysis-failure":
             case "worker-initialization-failure":
+                pending.reject(new Error(response.message));
+                break;
+            case "grouping-success":
+                if (pending.type === "group-photos") {
+                    pending.resolve(response.groups);
+                }
+                break;
+            case "grouping-failure":
                 pending.reject(new Error(response.message));
                 break;
         }

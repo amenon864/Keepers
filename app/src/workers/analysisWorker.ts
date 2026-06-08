@@ -1,6 +1,8 @@
 import { getKeepersClient } from "../wasm/client";
 import type {
+    AnalyzePhotoRequest,
     AnalysisWorkerRequest,
+    GroupPhotosRequest,
     AnalysisWorkerResponse
 } from "./analysisProtocol";
 
@@ -16,11 +18,14 @@ async function handleRequest(request: AnalysisWorkerRequest): Promise<void> {
         case "analyze-photo":
             await analyzePhoto(request);
             break;
+        case "group-photos":
+            await groupPhotos(request);
+            break;
     }
 }
 
 async function analyzePhoto(
-    request: AnalysisWorkerRequest
+    request: AnalyzePhotoRequest
 ): Promise<void> {
     try {
         const client = await getKeepersClient();
@@ -55,6 +60,28 @@ async function analyzePhoto(
                   };
 
         postResponse(response);
+    }
+}
+
+async function groupPhotos(request: GroupPhotosRequest): Promise<void> {
+    try {
+        const client = await getKeepersClient();
+        const groups = client.groupSimilarPhotos(
+            request.photos,
+            request.maximumDistance
+        );
+
+        postResponse({
+            type: "grouping-success",
+            requestId: request.requestId,
+            groups
+        });
+    } catch (error) {
+        postResponse({
+            type: "grouping-failure",
+            requestId: request.requestId,
+            message: readableWorkerError(error)
+        });
     }
 }
 

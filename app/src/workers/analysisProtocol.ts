@@ -1,4 +1,4 @@
-import type { PhotoAnalysis } from "../wasm/types";
+import type { PhotoAnalysis, PhotoHash, SimilarityGroup } from "../wasm/types";
 
 export interface AnalyzePhotoRequest {
     type: "analyze-photo";
@@ -10,7 +10,14 @@ export interface AnalyzePhotoRequest {
     pixels: Uint8Array;
 }
 
-export type AnalysisWorkerRequest = AnalyzePhotoRequest;
+export interface GroupPhotosRequest {
+    type: "group-photos";
+    requestId: number;
+    photos: PhotoHash[];
+    maximumDistance: number;
+}
+
+export type AnalysisWorkerRequest = AnalyzePhotoRequest | GroupPhotosRequest;
 
 export interface AnalyzePhotoSuccessResponse {
     type: "analysis-success";
@@ -32,7 +39,21 @@ export interface WorkerInitializationFailureResponse {
     message: string;
 }
 
+export interface GroupPhotosSuccessResponse {
+    type: "grouping-success";
+    requestId: number;
+    groups: SimilarityGroup[];
+}
+
+export interface GroupPhotosFailureResponse {
+    type: "grouping-failure";
+    requestId: number;
+    message: string;
+}
+
 export type AnalysisWorkerResponse =
     | AnalyzePhotoSuccessResponse
     | AnalyzePhotoFailureResponse
-    | WorkerInitializationFailureResponse;
+    | WorkerInitializationFailureResponse
+    | GroupPhotosSuccessResponse
+    | GroupPhotosFailureResponse;
