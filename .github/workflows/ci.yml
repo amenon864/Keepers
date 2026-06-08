@@ -109,3 +109,19 @@ jobs:
                   set -euo pipefail
                   test -f build-wasm/wasm/keepers.mjs
                   test -f build-wasm/wasm/keepers.wasm
+
+            - name: Copy WebAssembly artifacts into frontend
+              run: ./scripts/copy-wasm-to-app.sh
+
+            - name: Install frontend dependencies
+              working-directory: app
+              run: npm ci
+
+            - name: Build frontend with WebAssembly
+              working-directory: app
+              run: npm run build
+
+            - name: Verify frontend WebAssembly artifacts
+              run: |
+                  test -f app/dist/assets/generated/keepers.mjs
+                  test -f app/dist/assets/generated/keepers.wasm
