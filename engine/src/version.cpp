@@ -1,6 +1,6 @@
-#include <burstpick/version.hpp>
+#include <keepers/version.hpp>
 
-namespace burstpick {
+namespace keepers {
 
 const char* version() noexcept
 {

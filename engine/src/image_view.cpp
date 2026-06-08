@@ -1,4 +1,4 @@
-#include <burstpick/image_view.hpp>
+#include <keepers/image_view.hpp>
 
 #include <limits>
 #include <stdexcept>
@@ -16,7 +16,7 @@ std::size_t checked_multiply(std::size_t left, std::size_t right)
 
 }
 
-namespace burstpick {
+namespace keepers {
 
 ImageView::ImageView(
     std::span<const std::uint8_t> pixels,

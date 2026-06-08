@@ -15,7 +15,7 @@ FetchContent_MakeAvailable(Catch2)
 list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
 include(Catch)
 
-add_executable(burstpick_engine_tests
+add_executable(keepers_engine_tests
     grayscale_test.cpp
     image_metrics_test.cpp
     image_view_test.cpp
@@ -23,21 +23,21 @@ add_executable(burstpick_engine_tests
     version_test.cpp
 )
 
-target_link_libraries(burstpick_engine_tests
+target_link_libraries(keepers_engine_tests
     PRIVATE
-        burstpick_engine
+        keepers_engine
         Catch2::Catch2WithMain
 )
 
-target_compile_features(burstpick_engine_tests
+target_compile_features(keepers_engine_tests
     PRIVATE
         cxx_std_20
 )
 
-set_target_properties(burstpick_engine_tests PROPERTIES
+set_target_properties(keepers_engine_tests PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
-burstpick_enable_project_warnings(burstpick_engine_tests)
+keepers_enable_project_warnings(keepers_engine_tests)
 
-catch_discover_tests(burstpick_engine_tests)
+catch_discover_tests(keepers_engine_tests)

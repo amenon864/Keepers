@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <span>
 
-namespace burstpick {
+namespace keepers {
 
 // ImageView does not own pixels; callers must keep the storage alive.
 class ImageView {

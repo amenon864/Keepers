@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <span>
 
-namespace burstpick {
+namespace keepers {
 
 [[nodiscard]] double laplacian_variance(
     std::span<const std::uint8_t> grayscale,

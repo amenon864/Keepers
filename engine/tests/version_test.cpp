@@ -2,9 +2,9 @@
 
 #include <string_view>
 
-#include <burstpick/version.hpp>
+#include <keepers/version.hpp>
 
 TEST_CASE("version returns the development version")
 {
-    REQUIRE(std::string_view{burstpick::version()} == "0.1.0-dev");
+    REQUIRE(std::string_view{keepers::version()} == "0.1.0-dev");
 }

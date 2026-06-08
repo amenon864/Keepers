@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include <burstpick/sharpness.hpp>
+#include <keepers/sharpness.hpp>
 
 TEST_CASE("laplacian_variance returns zero for a uniform image")
 {
@@ -18,7 +18,7 @@ TEST_CASE("laplacian_variance returns zero for a uniform image")
     };
 
     REQUIRE(
-        burstpick::laplacian_variance(grayscale, 3, 3) ==
+        keepers::laplacian_variance(grayscale, 3, 3) ==
         Catch::Approx(0.0)
     );
 }
@@ -33,7 +33,7 @@ TEST_CASE("laplacian_variance detects a single bright center pixel")
         0, 0, 0, 0, 0
     };
 
-    REQUIRE(burstpick::laplacian_variance(grayscale, 5, 5) > 0.0);
+    REQUIRE(keepers::laplacian_variance(grayscale, 5, 5) > 0.0);
 }
 
 TEST_CASE("laplacian_variance scores detailed images higher than flat images")
@@ -53,9 +53,9 @@ TEST_CASE("laplacian_variance scores detailed images higher than flat images")
         0, 255, 0, 255, 0
     };
 
-    const double flat_score = burstpick::laplacian_variance(flat, 5, 5);
+    const double flat_score = keepers::laplacian_variance(flat, 5, 5);
     const double detailed_score =
-        burstpick::laplacian_variance(detailed, 5, 5);
+        keepers::laplacian_variance(detailed, 5, 5);
 
     REQUIRE(detailed_score > flat_score);
 }
@@ -78,9 +78,9 @@ TEST_CASE("laplacian_variance scores abrupt edges higher than gradual transition
     };
 
     const double gradual_score =
-        burstpick::laplacian_variance(gradual, 5, 5);
+        keepers::laplacian_variance(gradual, 5, 5);
     const double sharp_edge_score =
-        burstpick::laplacian_variance(sharp_edge, 5, 5);
+        keepers::laplacian_variance(sharp_edge, 5, 5);
 
     REQUIRE(sharp_edge_score > gradual_score);
 }
@@ -91,11 +91,11 @@ TEST_CASE("laplacian_variance rejects grayscale buffer size mismatches")
     const std::array<std::uint8_t, 10> larger{};
 
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(smaller, 3, 3),
+        keepers::laplacian_variance(smaller, 3, 3),
         std::invalid_argument
     );
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(larger, 3, 3),
+        keepers::laplacian_variance(larger, 3, 3),
         std::invalid_argument
     );
 }
@@ -105,11 +105,11 @@ TEST_CASE("laplacian_variance rejects zero dimensions")
     const std::array<std::uint8_t, 9> grayscale{};
 
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(grayscale, 0, 3),
+        keepers::laplacian_variance(grayscale, 0, 3),
         std::invalid_argument
     );
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(grayscale, 3, 0),
+        keepers::laplacian_variance(grayscale, 3, 0),
         std::invalid_argument
     );
 }
@@ -121,15 +121,15 @@ TEST_CASE("laplacian_variance rejects images smaller than 3x3")
     const std::array<std::uint8_t, 1> one_by_one{};
 
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(two_by_three, 2, 3),
+        keepers::laplacian_variance(two_by_three, 2, 3),
         std::invalid_argument
     );
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(three_by_two, 3, 2),
+        keepers::laplacian_variance(three_by_two, 3, 2),
         std::invalid_argument
     );
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(one_by_one, 1, 1),
+        keepers::laplacian_variance(one_by_one, 1, 1),
         std::invalid_argument
     );
 }
@@ -140,7 +140,7 @@ TEST_CASE("laplacian_variance rejects dimension overflow")
     constexpr std::size_t max_size = std::numeric_limits<std::size_t>::max();
 
     REQUIRE_THROWS_AS(
-        burstpick::laplacian_variance(grayscale, max_size, 2),
+        keepers::laplacian_variance(grayscale, max_size, 2),
         std::overflow_error
     );
 }
@@ -156,7 +156,7 @@ TEST_CASE("laplacian_variance leaves the source buffer unchanged")
     };
     std::vector<std::uint8_t> grayscale = original;
 
-    static_cast<void>(burstpick::laplacian_variance(grayscale, 5, 5));
+    static_cast<void>(keepers::laplacian_variance(grayscale, 5, 5));
 
     REQUIRE(grayscale == original);
 }

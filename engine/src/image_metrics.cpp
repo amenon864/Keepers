@@ -1,4 +1,4 @@
-#include <burstpick/image_metrics.hpp>
+#include <keepers/image_metrics.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -26,7 +26,7 @@ std::size_t percentile_index(double percentile, std::size_t size)
 
 }
 
-namespace burstpick {
+namespace keepers {
 
 ExposureMetrics analyze_exposure(std::span<const std::uint8_t> grayscale)
 {

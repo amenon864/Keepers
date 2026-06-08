@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <span>
 
-namespace burstpick {
+namespace keepers {
 
 struct ExposureMetrics {
     double mean_luminance;

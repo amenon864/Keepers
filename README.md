@@ -1,8 +1,6 @@
-# BurstPick
+# Keepers
 
-BurstPick is a browser-based photo burst analyzer that will help users group similar burst photos and choose the strongest shot from each group.
-
-Photo analysis is planned to run locally in the browser using a C++ image-processing engine compiled to WebAssembly.
+Keepers is a local-first browser application that helps users identify the strongest photos from a burst of similar shots. Its image-analysis engine is written in C++ and will be compiled to WebAssembly for in-browser processing.
 
 ## Repository Structure
 
@@ -28,4 +26,4 @@ cmake --build build-no-tests
 
 ## Development Status
 
-BurstPick is in its initial setup stage. Photo analysis features are not implemented yet.
+The native C++ engine currently supports validated RGB/RGBA image views, grayscale conversion, Laplacian-variance sharpness scoring, and exposure and percentile-contrast metrics.

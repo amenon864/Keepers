@@ -1,4 +1,4 @@
-#include <burstpick/grayscale.hpp>
+#include <keepers/grayscale.hpp>
 
 #include <cmath>
 #include <span>
@@ -22,7 +22,7 @@ std::uint8_t to_luminance(
 
 }
 
-namespace burstpick {
+namespace keepers {
 
 std::vector<std::uint8_t> to_grayscale(const ImageView& image)
 {

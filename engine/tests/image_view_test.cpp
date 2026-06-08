@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include <burstpick/image_view.hpp>
+#include <keepers/image_view.hpp>
 
 TEST_CASE("ImageView exposes metadata and pixels for a valid RGB image")
 {
@@ -17,7 +17,7 @@ TEST_CASE("ImageView exposes metadata and pixels for a valid RGB image")
         10, 11, 12
     };
 
-    const burstpick::ImageView view{pixels, 2, 2, 3};
+    const keepers::ImageView view{pixels, 2, 2, 3};
 
     REQUIRE(view.width() == 2);
     REQUIRE(view.height() == 2);
@@ -37,7 +37,7 @@ TEST_CASE("ImageView exposes metadata for a valid RGBA image")
         50, 60, 70, 80
     };
 
-    const burstpick::ImageView view{pixels, 1, 2, 4};
+    const keepers::ImageView view{pixels, 1, 2, 4};
 
     REQUIRE(view.width() == 1);
     REQUIRE(view.height() == 2);
@@ -52,7 +52,7 @@ TEST_CASE("ImageView rejects zero width")
     const std::array<std::uint8_t, 1> pixels{1};
 
     REQUIRE_THROWS_AS(
-        burstpick::ImageView(pixels, 0, 1, 1),
+        keepers::ImageView(pixels, 0, 1, 1),
         std::invalid_argument
     );
 }
@@ -62,7 +62,7 @@ TEST_CASE("ImageView rejects zero height")
     const std::array<std::uint8_t, 1> pixels{1};
 
     REQUIRE_THROWS_AS(
-        burstpick::ImageView(pixels, 1, 0, 1),
+        keepers::ImageView(pixels, 1, 0, 1),
         std::invalid_argument
     );
 }
@@ -72,7 +72,7 @@ TEST_CASE("ImageView rejects zero channels")
     const std::array<std::uint8_t, 1> pixels{1};
 
     REQUIRE_THROWS_AS(
-        burstpick::ImageView(pixels, 1, 1, 0),
+        keepers::ImageView(pixels, 1, 1, 0),
         std::invalid_argument
     );
 }
@@ -82,7 +82,7 @@ TEST_CASE("ImageView rejects an undersized pixel buffer")
     const std::array<std::uint8_t, 11> pixels{};
 
     REQUIRE_THROWS_AS(
-        burstpick::ImageView(pixels, 2, 2, 3),
+        keepers::ImageView(pixels, 2, 2, 3),
         std::invalid_argument
     );
 }
@@ -93,7 +93,7 @@ TEST_CASE("ImageView rejects width-height overflow")
     constexpr std::size_t max_size = std::numeric_limits<std::size_t>::max();
 
     REQUIRE_THROWS_AS(
-        burstpick::ImageView(pixels, max_size, 2, 1),
+        keepers::ImageView(pixels, max_size, 2, 1),
         std::overflow_error
     );
 }
@@ -104,7 +104,7 @@ TEST_CASE("ImageView rejects channel multiplication overflow")
     constexpr std::size_t max_size = std::numeric_limits<std::size_t>::max();
 
     REQUIRE_THROWS_AS(
-        burstpick::ImageView(pixels, (max_size / 2) + 1, 1, 2),
+        keepers::ImageView(pixels, (max_size / 2) + 1, 1, 2),
         std::overflow_error
     );
 }
@@ -119,7 +119,7 @@ TEST_CASE("ImageView excludes trailing data from oversized buffers")
         99, 100, 101
     };
 
-    const burstpick::ImageView view{pixels, 2, 2, 3};
+    const keepers::ImageView view{pixels, 2, 2, 3};
 
     REQUIRE(view.required_size() == 12);
     REQUIRE(view.pixels().size() == view.required_size());
@@ -129,7 +129,7 @@ TEST_CASE("ImageView excludes trailing data from oversized buffers")
 TEST_CASE("ImageView refers to the source buffer without copying")
 {
     std::vector<std::uint8_t> pixels{1, 2, 3, 4};
-    const burstpick::ImageView view{pixels, 2, 1, 2};
+    const keepers::ImageView view{pixels, 2, 1, 2};
 
     pixels[2] = 42;
 

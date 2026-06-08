@@ -1,4 +1,4 @@
-#include <burstpick/sharpness.hpp>
+#include <keepers/sharpness.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -17,7 +17,7 @@ std::size_t checked_multiply(std::size_t left, std::size_t right)
 
 }
 
-namespace burstpick {
+namespace keepers {
 
 double laplacian_variance(
     std::span<const std::uint8_t> grayscale,

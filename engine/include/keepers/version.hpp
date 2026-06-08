@@ -1,6 +1,6 @@
 #pragma once
 
-namespace burstpick {
+namespace keepers {
 
 [[nodiscard]] const char* version() noexcept;
 
