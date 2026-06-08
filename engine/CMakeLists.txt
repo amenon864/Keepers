@@ -1,4 +1,5 @@
 add_library(burstpick_engine STATIC
+    src/image_view.cpp
     src/version.cpp
 )
 
