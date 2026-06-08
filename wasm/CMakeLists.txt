@@ -28,6 +28,7 @@ set_target_properties(keepers_wasm PROPERTIES
 
 target_compile_options(keepers_wasm
     PRIVATE
+        -fexceptions
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
 )
 
@@ -71,6 +72,7 @@ list(JOIN keepers_wasm_exported_functions "','" keepers_wasm_exports)
 target_link_options(keepers_wasm
     PRIVATE
         "--no-entry"
+        "-fexceptions"
         "-sMODULARIZE=1"
         "-sEXPORT_ES6=1"
         "-sEXPORT_NAME=KeepersModule"

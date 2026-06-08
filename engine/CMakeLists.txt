@@ -34,6 +34,13 @@ endfunction()
 
 keepers_enable_project_warnings(keepers_engine)
 
+if(EMSCRIPTEN)
+    target_compile_options(keepers_engine
+        PRIVATE
+            -fexceptions
+    )
+endif()
+
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
