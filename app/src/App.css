@@ -94,6 +94,57 @@
     color: #374151;
 }
 
+.privacy-note {
+    margin: 0;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.workflow-steps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.workflow-step {
+    display: grid;
+    gap: 0.25rem;
+    min-height: 4.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 0.65rem;
+}
+
+.workflow-step span {
+    color: #374151;
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+.workflow-step strong {
+    color: #6b7280;
+    font-size: 0.78rem;
+}
+
+.workflow-step.active {
+    border-color: #9a3412;
+    background: #fff7ed;
+}
+
+.workflow-step.complete {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.workflow-step.failed {
+    border-color: #fecaca;
+    background: #fff1f2;
+}
+
 button {
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -298,5 +349,9 @@ button:disabled {
 
     .summary-row button {
         width: 100%;
+    }
+
+    .workflow-steps {
+        grid-template-columns: 1fr;
     }
 }

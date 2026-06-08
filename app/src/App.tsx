@@ -54,6 +54,10 @@ interface GroupRanking {
 
 type GroupRankingsByIndex = Record<number, GroupRanking>;
 
+interface AnalyzePhotosOptions {
+    forceReanalyze?: boolean;
+}
+
 function App() {
     const inputRef = useRef<HTMLInputElement>(null);
     const idAllocatorRef = useRef(new SessionPhotoIdAllocator());
@@ -135,9 +139,53 @@ function App() {
             ).length,
         [analysisState]
     );
+    const failedAnalysisCount = useMemo(
+        () =>
+            Object.values(analysisState).filter(
+                (status) => status.state === "failed"
+            ).length,
+        [analysisState]
+    );
+    const hasCurrentRecommendations = useMemo(
+        () =>
+            photos.length > 0 &&
+            failedAnalysisCount === 0 &&
+            similarityGroups.length > 0 &&
+            similarityGroups.every(
+                (_group, groupIndex) =>
+                    groupRankings[groupIndex] !== undefined &&
+                    groupRankings[groupIndex].error === undefined
+            ),
+        [failedAnalysisCount, groupRankings, photos.length, similarityGroups]
+    );
     const remainingSlots = useMemo(
         () => Math.max(0, maximumPhotoCount - photos.length),
         [photos.length]
+    );
+    const workflowSteps = useMemo(
+        () =>
+            buildWorkflowSteps({
+                photoCount: photos.length,
+                isDecoding,
+                analyzedCount,
+                failedAnalysisCount,
+                isAnalyzing,
+                groupingStatus,
+                isGrouping,
+                isRanking,
+                hasCurrentRecommendations
+            }),
+        [
+            analyzedCount,
+            failedAnalysisCount,
+            groupingStatus,
+            hasCurrentRecommendations,
+            isAnalyzing,
+            isDecoding,
+            isGrouping,
+            isRanking,
+            photos.length
+        ]
     );
 
     const cancelAnalysis = () => {
@@ -233,17 +281,39 @@ function App() {
         setDecodeProgress({ completed: 0, total: 0 });
     };
 
-    const analyzePhotos = async () => {
+    const analyzePhotos = async (options: AnalyzePhotosOptions = {}) => {
         if (photosRef.current.length === 0 || isPipelineBusy) {
             return;
         }
 
+        if (!options.forceReanalyze && hasCurrentRecommendations) {
+            return;
+        }
+
+        const selectedPhotos = [...photosRef.current];
         const runId = analysisRunIdRef.current + 1;
         analysisRunIdRef.current = runId;
         analysisWorkerRef.current?.terminate();
         const workerClient = new AnalysisWorkerClient();
         analysisWorkerRef.current = workerClient;
         const analysisResults = new Map<number, PhotoAnalysis>();
+        const photosToAnalyze: DecodedPhoto[] = [];
+        const initialAnalysisState: AnalysisStateByPhotoId = {};
+
+        for (const photo of selectedPhotos) {
+            const existingStatus = analysisState[photo.id];
+
+            if (
+                !options.forceReanalyze &&
+                existingStatus?.state === "analyzed"
+            ) {
+                initialAnalysisState[photo.id] = existingStatus;
+                analysisResults.set(photo.id, existingStatus.analysis);
+            } else {
+                initialAnalysisState[photo.id] = { state: "idle" };
+                photosToAnalyze.push(photo);
+            }
+        }
 
         setAnalysisError(undefined);
         setGroupingError(undefined);
@@ -253,15 +323,11 @@ function App() {
         setGroupRankings({});
         setAnalysisProgress({
             completed: 0,
-            total: photosRef.current.length
+            total: photosToAnalyze.length
         });
-        setAnalysisState(
-            Object.fromEntries(
-                photosRef.current.map((photo) => [photo.id, { state: "idle" }])
-            ) as AnalysisStateByPhotoId
-        );
+        setAnalysisState(initialAnalysisState);
 
-        for (const photo of photosRef.current) {
+        for (const photo of photosToAnalyze) {
             if (analysisRunIdRef.current !== runId) {
                 return;
             }
@@ -502,22 +568,48 @@ function App() {
                             void analyzePhotos();
                         }}
                         disabled={
-                            photos.length === 0 || isDecoding || isPipelineBusy
+                            photos.length === 0 ||
+                            isDecoding ||
+                            isPipelineBusy ||
+                            hasCurrentRecommendations
                         }
                     >
-                        Analyze photos
+                        {primaryActionLabel(
+                            failedAnalysisCount,
+                            hasCurrentRecommendations
+                        )}
                     </button>
                     <button
                         type="button"
-                        onClick={clearPhotos}
+                        onClick={() => {
+                            void analyzePhotos({ forceReanalyze: true });
+                        }}
                         disabled={
-                            isPipelineBusy ||
-                            (photos.length === 0 && rejectedFiles.length === 0)
+                            photos.length === 0 || isDecoding || isPipelineBusy
                         }
+                    >
+                        Rerun full pipeline
+                    </button>
+                    {isPipelineBusy ? (
+                        <button type="button" onClick={cancelAnalysis}>
+                            Stop
+                        </button>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={clearPhotos}
+                        disabled={photos.length === 0 && rejectedFiles.length === 0}
                     >
                         Clear all
                     </button>
                 </div>
+
+                <WorkflowStatus steps={workflowSteps} />
+
+                <p className="privacy-note">
+                    Photos stay on this device and are processed locally in
+                    your browser.
+                </p>
 
                 {analysisError !== undefined ? (
                     <div className="notice error" role="alert">
@@ -657,6 +749,117 @@ function App() {
             </section>
         </main>
     );
+}
+
+function primaryActionLabel(
+    failedAnalysisCount: number,
+    hasCurrentRecommendations: boolean
+): string {
+    if (hasCurrentRecommendations) {
+        return "Recommendations ready";
+    }
+
+    if (failedAnalysisCount > 0) {
+        return "Retry failed analysis";
+    }
+
+    return "Analyze photos";
+}
+
+interface WorkflowStep {
+    label: string;
+    status: "pending" | "active" | "complete" | "failed";
+}
+
+function WorkflowStatus({ steps }: { steps: readonly WorkflowStep[] }) {
+    return (
+        <ol className="workflow-steps" role="status" aria-live="polite">
+            {steps.map((step) => (
+                <li className={`workflow-step ${step.status}`} key={step.label}>
+                    <span>{step.label}</span>
+                    <strong>{workflowStatusLabel(step.status)}</strong>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+function workflowStatusLabel(status: WorkflowStep["status"]): string {
+    switch (status) {
+        case "active":
+            return "In progress";
+        case "complete":
+            return "Complete";
+        case "failed":
+            return "Needs retry";
+        case "pending":
+            return "Pending";
+    }
+}
+
+function buildWorkflowSteps({
+    photoCount,
+    isDecoding,
+    analyzedCount,
+    failedAnalysisCount,
+    isAnalyzing,
+    groupingStatus,
+    isGrouping,
+    isRanking,
+    hasCurrentRecommendations
+}: {
+    photoCount: number;
+    isDecoding: boolean;
+    analyzedCount: number;
+    failedAnalysisCount: number;
+    isAnalyzing: boolean;
+    groupingStatus: GroupingStatus;
+    isGrouping: boolean;
+    isRanking: boolean;
+    hasCurrentRecommendations: boolean;
+}): WorkflowStep[] {
+    return [
+        {
+            label: "Select photos",
+            status: photoCount > 0 ? "complete" : "active"
+        },
+        {
+            label: "Decode photos",
+            status: isDecoding
+                ? "active"
+                : photoCount > 0
+                  ? "complete"
+                  : "pending"
+        },
+        {
+            label: "Analyze locally",
+            status: isAnalyzing
+                ? "active"
+                : failedAnalysisCount > 0
+                  ? "failed"
+                  : analyzedCount > 0
+                    ? "complete"
+                    : "pending"
+        },
+        {
+            label: "Group similar shots",
+            status: isGrouping
+                ? "active"
+                : groupingStatus === "failed"
+                  ? "failed"
+                  : groupingStatus === "grouped"
+                    ? "complete"
+                    : "pending"
+        },
+        {
+            label: "Review recommendations",
+            status: isRanking
+                ? "active"
+                : hasCurrentRecommendations
+                  ? "complete"
+                  : "pending"
+        }
+    ];
 }
 
 function PhotoCard({

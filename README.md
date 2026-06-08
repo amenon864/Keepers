@@ -65,6 +65,20 @@ node scripts/smoke-test-wasm.mjs build-wasm/wasm/keepers.mjs
 The generated `keepers.mjs` and `keepers.wasm` artifacts remain inside ignored
 directories and are not committed.
 
+## Browser MVP
+
+The browser app now supports the full local photo-culling workflow:
+
+- select or drag multiple local image files into the browser
+- decode photos to browser-native RGBA pixel buffers
+- analyze each photo with the C++ engine compiled to WebAssembly
+- group successfully analyzed photos by visual similarity
+- rank photos within each group and mark a neutral recommended keeper
+
+Photos stay on this device and are processed locally in your browser. The app
+uses object URLs for previews and revokes them when photos are removed, the
+collection is cleared, or the app unmounts.
+
 ## Frontend Development
 
 Build and copy the WebAssembly browser artifacts before running browser
@@ -75,6 +89,7 @@ functionality that uses the Keepers engine:
 ./scripts/copy-wasm-to-app.sh
 
 cd app
+npm ci
 npm run dev
 ```
 
@@ -82,8 +97,22 @@ The copy step places generated artifacts under `app/src/wasm/generated/`. That
 directory is treated as generated output. The frontend TypeScript client in
 `app/src/wasm/` wraps the C ABI, handles memory allocation and status-code
 translation, and exposes typed methods for analysis, similarity grouping, and
-quality ranking. User-facing upload integration is not implemented yet.
+quality ranking. Browser analysis runs in a module Web Worker so the React UI
+does not call the WebAssembly client directly on the main thread.
+
+Run frontend checks:
+
+```bash
+cd app
+npm ci
+npm run lint
+npm run build
+```
 
 ## Development Status
 
-The native C++ engine currently supports image validation, grayscale conversion, sharpness, exposure, and contrast analysis, difference hashing, similarity grouping, quality ranking, per-photo analysis, and a tested WebAssembly C ABI.
+The native C++ engine currently supports image validation, grayscale conversion,
+sharpness, exposure, and contrast analysis, difference hashing, similarity
+grouping, quality ranking, per-photo analysis, and a tested WebAssembly C ABI.
+The browser MVP connects those APIs into an upload, analyze, group, rank, and
+review workflow.
