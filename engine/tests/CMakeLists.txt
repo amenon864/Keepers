@@ -18,6 +18,7 @@ include(Catch)
 add_executable(burstpick_engine_tests
     grayscale_test.cpp
     image_view_test.cpp
+    sharpness_test.cpp
     version_test.cpp
 )
 
