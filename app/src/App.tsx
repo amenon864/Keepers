@@ -7,6 +7,8 @@ import {
     validatePhotoFiles
 } from "./photos/photoValidation";
 import type { DecodedPhoto, RejectedFile } from "./photos/types";
+import { AnalysisWorkerClient } from "./workers/AnalysisWorkerClient";
+import type { PhotoAnalysis } from "./wasm/types";
 
 interface DecodeProgress {
     completed: number;
@@ -19,10 +21,27 @@ interface DecodeError {
     message: string;
 }
 
+type PhotoAnalysisStatus =
+    | { state: "idle" }
+    | { state: "analyzing" }
+    | { state: "analyzed"; analysis: PhotoAnalysis }
+    | { state: "failed"; message: string };
+
+interface AnalysisProgress {
+    completed: number;
+    total: number;
+}
+
+type AnalysisStateByPhotoId = Record<number, PhotoAnalysisStatus>;
+
 function App() {
     const inputRef = useRef<HTMLInputElement>(null);
     const idAllocatorRef = useRef(new SessionPhotoIdAllocator());
     const photosRef = useRef<DecodedPhoto[]>([]);
+    const analysisWorkerRef = useRef<AnalysisWorkerClient | undefined>(
+        undefined
+    );
+    const analysisRunIdRef = useRef(0);
     const [photos, setPhotos] = useState<DecodedPhoto[]>([]);
     const [rejectedFiles, setRejectedFiles] = useState<RejectedFile[]>([]);
     const [decodeErrors, setDecodeErrors] = useState<DecodeError[]>([]);
@@ -31,6 +50,17 @@ function App() {
         total: 0
     });
     const [isDragging, setIsDragging] = useState(false);
+    const [analysisState, setAnalysisState] = useState<AnalysisStateByPhotoId>(
+        {}
+    );
+    const [analysisProgress, setAnalysisProgress] =
+        useState<AnalysisProgress>({
+            completed: 0,
+            total: 0
+        });
+    const [analysisError, setAnalysisError] = useState<string | undefined>(
+        undefined
+    );
 
     useEffect(() => {
         photosRef.current = photos;
@@ -53,14 +83,33 @@ function App() {
             for (const photo of photosRef.current) {
                 URL.revokeObjectURL(photo.previewUrl);
             }
+
+            analysisWorkerRef.current?.terminate();
         };
     }, []);
 
     const isDecoding = decodeProgress.completed < decodeProgress.total;
+    const isAnalyzing = analysisProgress.completed < analysisProgress.total;
+    const analyzedCount = useMemo(
+        () =>
+            Object.values(analysisState).filter(
+                (status) => status.state === "analyzed"
+            ).length,
+        [analysisState]
+    );
     const remainingSlots = useMemo(
         () => Math.max(0, maximumPhotoCount - photos.length),
         [photos.length]
     );
+
+    const cancelAnalysis = () => {
+        analysisRunIdRef.current += 1;
+        analysisWorkerRef.current?.terminate();
+        analysisWorkerRef.current = undefined;
+        setAnalysisProgress({ completed: 0, total: 0 });
+        setAnalysisError(undefined);
+        setAnalysisState({});
+    };
 
     const handleFiles = async (fileList: FileList | File[]) => {
         const incomingFiles = Array.from(fileList);
@@ -103,6 +152,7 @@ function App() {
         }
 
         if (decodedPhotos.length > 0) {
+            cancelAnalysis();
             setPhotos((currentPhotos) => [...currentPhotos, ...decodedPhotos]);
         }
 
@@ -114,6 +164,7 @@ function App() {
     };
 
     const removePhoto = (photoId: number) => {
+        cancelAnalysis();
         setPhotos((currentPhotos) => {
             const photoToRemove = currentPhotos.find(
                 (photo) => photo.id === photoId
@@ -128,6 +179,7 @@ function App() {
     };
 
     const clearPhotos = () => {
+        cancelAnalysis();
         for (const photo of photosRef.current) {
             URL.revokeObjectURL(photo.previewUrl);
         }
@@ -136,6 +188,83 @@ function App() {
         setRejectedFiles([]);
         setDecodeErrors([]);
         setDecodeProgress({ completed: 0, total: 0 });
+    };
+
+    const analyzePhotos = async () => {
+        if (photosRef.current.length === 0 || isAnalyzing) {
+            return;
+        }
+
+        const runId = analysisRunIdRef.current + 1;
+        analysisRunIdRef.current = runId;
+        analysisWorkerRef.current?.terminate();
+        const workerClient = new AnalysisWorkerClient();
+        analysisWorkerRef.current = workerClient;
+
+        setAnalysisError(undefined);
+        setAnalysisProgress({
+            completed: 0,
+            total: photosRef.current.length
+        });
+        setAnalysisState(
+            Object.fromEntries(
+                photosRef.current.map((photo) => [photo.id, { state: "idle" }])
+            ) as AnalysisStateByPhotoId
+        );
+
+        for (const photo of photosRef.current) {
+            if (analysisRunIdRef.current !== runId) {
+                return;
+            }
+
+            setAnalysisState((currentState) => ({
+                ...currentState,
+                [photo.id]: { state: "analyzing" }
+            }));
+
+            try {
+                const analysis = await analyzePhotoWithFreshPixels(
+                    workerClient,
+                    photo
+                );
+
+                if (analysisRunIdRef.current !== runId) {
+                    return;
+                }
+
+                setAnalysisState((currentState) => ({
+                    ...currentState,
+                    [photo.id]: { state: "analyzed", analysis }
+                }));
+            } catch (error) {
+                if (analysisRunIdRef.current !== runId) {
+                    return;
+                }
+
+                setAnalysisState((currentState) => ({
+                    ...currentState,
+                    [photo.id]: {
+                        state: "failed",
+                        message:
+                            error instanceof Error
+                                ? error.message
+                                : "Photo analysis failed."
+                    }
+                }));
+            } finally {
+                if (analysisRunIdRef.current === runId) {
+                    setAnalysisProgress((progress) => ({
+                        ...progress,
+                        completed: progress.completed + 1
+                    }));
+                }
+            }
+        }
+
+        if (analysisRunIdRef.current === runId) {
+            workerClient.terminate();
+            analysisWorkerRef.current = undefined;
+        }
     };
 
     return (
@@ -203,20 +332,51 @@ function App() {
                         {photos.length} selected photo
                         {photos.length === 1 ? "" : "s"}
                     </span>
+                    <span>
+                        {analyzedCount} analyzed of {photos.length}
+                    </span>
                     {isDecoding ? (
                         <span>
                             Decoding {decodeProgress.completed} of{" "}
                             {decodeProgress.total}
                         </span>
                     ) : null}
+                    {isAnalyzing ? (
+                        <span>
+                            Analyzing {analysisProgress.completed + 1} of{" "}
+                            {analysisProgress.total}
+                        </span>
+                    ) : null}
+                    <button
+                        type="button"
+                        className="primary-action"
+                        onClick={() => {
+                            void analyzePhotos();
+                        }}
+                        disabled={
+                            photos.length === 0 || isDecoding || isAnalyzing
+                        }
+                    >
+                        Analyze photos
+                    </button>
                     <button
                         type="button"
                         onClick={clearPhotos}
-                        disabled={photos.length === 0 && rejectedFiles.length === 0}
+                        disabled={
+                            isAnalyzing ||
+                            (photos.length === 0 && rejectedFiles.length === 0)
+                        }
                     >
                         Clear all
                     </button>
                 </div>
+
+                {analysisError !== undefined ? (
+                    <div className="notice error" role="alert">
+                        <h2>Analysis error</h2>
+                        <p>{analysisError}</p>
+                    </div>
+                ) : null}
 
                 {rejectedFiles.length > 0 ? (
                     <div className="notice error" role="alert">
@@ -259,9 +419,13 @@ function App() {
                                     <span>
                                         {photo.width} x {photo.height}
                                     </span>
+                                    <AnalysisStatusSummary
+                                        status={analysisState[photo.id]}
+                                    />
                                 </div>
                                 <button
                                     type="button"
+                                    disabled={isAnalyzing}
                                     onClick={() => {
                                         removePhoto(photo.id);
                                     }}
@@ -280,6 +444,52 @@ function App() {
             </section>
         </main>
     );
+}
+
+async function analyzePhotoWithFreshPixels(
+    workerClient: AnalysisWorkerClient,
+    photo: DecodedPhoto
+): Promise<PhotoAnalysis> {
+    if (photo.pixels.byteLength > 0) {
+        return workerClient.analyzePhoto(photo);
+    }
+
+    const decodedPhoto = await decodePhotoFile(photo.id, photo.file);
+    URL.revokeObjectURL(decodedPhoto.previewUrl);
+    return workerClient.analyzePhoto({
+        ...photo,
+        pixels: decodedPhoto.pixels
+    });
+}
+
+function AnalysisStatusSummary({
+    status
+}: {
+    status: PhotoAnalysisStatus | undefined;
+}) {
+    if (status === undefined || status.state === "idle") {
+        return <span className="status-text">Awaiting analysis</span>;
+    }
+
+    if (status.state === "analyzing") {
+        return <span className="status-text">Analyzing locally</span>;
+    }
+
+    if (status.state === "failed") {
+        return <span className="status-text error-text">{status.message}</span>;
+    }
+
+    return (
+        <span className="status-text">
+            Analyzed · sharpness {formatMetric(status.analysis.sharpness)}
+        </span>
+    );
+}
+
+function formatMetric(value: number): string {
+    return value.toLocaleString(undefined, {
+        maximumFractionDigits: 1
+    });
 }
 
 export default App;

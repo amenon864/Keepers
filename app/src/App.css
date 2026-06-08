@@ -110,6 +110,17 @@ button:hover:not(:disabled) {
     background: #f9fafb;
 }
 
+.primary-action {
+    border-color: #9a3412;
+    background: #9a3412;
+    color: #ffffff;
+}
+
+.primary-action:hover:not(:disabled) {
+    border-color: #7c2d12;
+    background: #7c2d12;
+}
+
 button:focus-visible {
     outline: 3px solid #2563eb;
     outline-offset: 2px;
@@ -135,6 +146,10 @@ button:disabled {
     gap: 0.35rem;
     margin: 0;
     padding-left: 1.2rem;
+}
+
+.notice p {
+    margin: 0;
 }
 
 .notice.error {
@@ -181,6 +196,14 @@ button:disabled {
 .photo-details span {
     color: #6b7280;
     font-size: 0.9rem;
+}
+
+.status-text {
+    color: #374151;
+}
+
+.error-text {
+    color: #991b1b;
 }
 
 .empty-state {
