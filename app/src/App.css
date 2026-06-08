@@ -1,18 +1,20 @@
 .app {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    display: grid;
+    gap: 2rem;
     min-height: 100vh;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    text-align: center;
+    padding: 2rem clamp(1rem, 4vw, 3rem);
+    color: #1f2937;
+}
+
+.intro {
+    display: grid;
+    gap: 0.5rem;
+    max-width: 46rem;
 }
 
 .app h1 {
     margin: 0;
-    color: #1f2937;
-    font-size: 4rem;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
     line-height: 1.1;
 }
 
@@ -23,8 +25,187 @@
     font-size: 1.125rem;
 }
 
+.workspace {
+    display: grid;
+    gap: 1rem;
+    width: min(100%, 72rem);
+}
+
+.upload-zone {
+    display: grid;
+    gap: 0.5rem;
+    min-height: 12rem;
+    place-items: center;
+    border: 2px dashed #b7795f;
+    border-radius: 8px;
+    background: #fff7ed;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition:
+        background-color 140ms ease,
+        border-color 140ms ease,
+        box-shadow 140ms ease;
+}
+
+.upload-zone:hover,
+.upload-zone.is-dragging {
+    border-color: #7c2d12;
+    background: #ffedd5;
+}
+
+.upload-zone:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 4px;
+}
+
+.upload-zone strong {
+    font-size: 1.35rem;
+}
+
+.upload-zone span:last-child {
+    color: #6b7280;
+}
+
+.upload-eyebrow {
+    color: #9a3412;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    color: #374151;
+}
+
+button {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-weight: 650;
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    border-color: #9ca3af;
+    background: #f9fafb;
+}
+
+button:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+button:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.notice {
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.notice h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.notice ul {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+.notice.error {
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #7f1d1d;
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: 1rem;
+}
+
+.photo-card {
+    display: grid;
+    gap: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 0.75rem;
+}
+
+.photo-card img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 6px;
+    background: #e5e7eb;
+    object-fit: cover;
+}
+
+.photo-details {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.photo-details h2 {
+    overflow-wrap: anywhere;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.photo-details span {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.empty-state {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 1rem;
+}
+
 @media (max-width: 600px) {
-    .app h1 {
-        font-size: 2.5rem;
+    .app {
+        padding: 1rem;
+    }
+
+    .upload-zone {
+        min-height: 10rem;
+        padding: 1.25rem;
+    }
+
+    .summary-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .summary-row button {
+        width: 100%;
     }
 }
