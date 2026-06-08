@@ -49,7 +49,10 @@ cmake --build build-wasm --target keepers_wasm
 
 The generated module exposes a narrow C ABI. The current browser-facing API
 supports heap allocation, per-photo analysis of tightly packed RGB/RGBA pixel
-buffers, and explicit status codes.
+buffers, similarity grouping over precomputed hashes, within-group quality
+ranking over precomputed raw metrics, and explicit status codes. Grouping and
+ranking use caller-allocated input and output buffers with size-query calls for
+determining result capacity.
 
 Run the Node smoke test against a built module:
 

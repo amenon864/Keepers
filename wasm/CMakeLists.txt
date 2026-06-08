@@ -36,6 +36,8 @@ set(keepers_wasm_exported_functions
     _keepers_allocate
     _keepers_deallocate
     _keepers_analyze_photo
+    _keepers_group_similar_photos
+    _keepers_rank_photo_quality
     _keepers_photo_analysis_size
     _keepers_photo_analysis_offset_id
     _keepers_photo_analysis_offset_sharpness
@@ -44,6 +46,25 @@ set(keepers_wasm_exported_functions
     _keepers_photo_analysis_offset_highlight_clipping_ratio
     _keepers_photo_analysis_offset_contrast
     _keepers_photo_analysis_offset_difference_hash
+    _keepers_photo_hash_size
+    _keepers_photo_hash_offset_id
+    _keepers_photo_hash_offset_hash
+    _keepers_similarity_group_size
+    _keepers_similarity_group_offset_member_offset
+    _keepers_similarity_group_offset_member_count
+    _keepers_photo_metrics_size
+    _keepers_photo_metrics_offset_id
+    _keepers_photo_metrics_offset_sharpness
+    _keepers_photo_metrics_offset_mean_luminance
+    _keepers_photo_metrics_offset_shadow_clipping_ratio
+    _keepers_photo_metrics_offset_highlight_clipping_ratio
+    _keepers_photo_metrics_offset_contrast
+    _keepers_photo_quality_score_size
+    _keepers_photo_quality_score_offset_id
+    _keepers_photo_quality_score_offset_normalized_sharpness
+    _keepers_photo_quality_score_offset_exposure_score
+    _keepers_photo_quality_score_offset_normalized_contrast
+    _keepers_photo_quality_score_offset_overall_score
 )
 list(JOIN keepers_wasm_exported_functions "','" keepers_wasm_exports)
 
