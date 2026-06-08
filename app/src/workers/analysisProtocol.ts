@@ -1,4 +1,10 @@
-import type { PhotoAnalysis, PhotoHash, SimilarityGroup } from "../wasm/types";
+import type {
+    PhotoAnalysis,
+    PhotoHash,
+    PhotoMetrics,
+    PhotoQualityScore,
+    SimilarityGroup
+} from "../wasm/types";
 
 export interface AnalyzePhotoRequest {
     type: "analyze-photo";
@@ -17,7 +23,16 @@ export interface GroupPhotosRequest {
     maximumDistance: number;
 }
 
-export type AnalysisWorkerRequest = AnalyzePhotoRequest | GroupPhotosRequest;
+export interface RankPhotosRequest {
+    type: "rank-photos";
+    requestId: number;
+    photos: PhotoMetrics[];
+}
+
+export type AnalysisWorkerRequest =
+    | AnalyzePhotoRequest
+    | GroupPhotosRequest
+    | RankPhotosRequest;
 
 export interface AnalyzePhotoSuccessResponse {
     type: "analysis-success";
@@ -51,9 +66,23 @@ export interface GroupPhotosFailureResponse {
     message: string;
 }
 
+export interface RankPhotosSuccessResponse {
+    type: "ranking-success";
+    requestId: number;
+    scores: PhotoQualityScore[];
+}
+
+export interface RankPhotosFailureResponse {
+    type: "ranking-failure";
+    requestId: number;
+    message: string;
+}
+
 export type AnalysisWorkerResponse =
     | AnalyzePhotoSuccessResponse
     | AnalyzePhotoFailureResponse
     | WorkerInitializationFailureResponse
     | GroupPhotosSuccessResponse
-    | GroupPhotosFailureResponse;
+    | GroupPhotosFailureResponse
+    | RankPhotosSuccessResponse
+    | RankPhotosFailureResponse;

@@ -2,6 +2,8 @@ import type { DecodedPhoto } from "../photos/types";
 import type {
     PhotoAnalysis,
     PhotoHash,
+    PhotoMetrics,
+    PhotoQualityScore,
     SimilarityGroup
 } from "../wasm/types";
 import type {
@@ -21,7 +23,16 @@ interface PendingGroupPhotosRequest {
     reject: (error: Error) => void;
 }
 
-type PendingRequest = PendingAnalyzePhotoRequest | PendingGroupPhotosRequest;
+interface PendingRankPhotosRequest {
+    type: "rank-photos";
+    resolve: (scores: PhotoQualityScore[]) => void;
+    reject: (error: Error) => void;
+}
+
+type PendingRequest =
+    | PendingAnalyzePhotoRequest
+    | PendingGroupPhotosRequest
+    | PendingRankPhotosRequest;
 
 export class AnalysisWorkerClient {
     private readonly worker: Worker;
@@ -128,6 +139,42 @@ export class AnalysisWorkerClient {
         });
     }
 
+    rankPhotos(photos: readonly PhotoMetrics[]): Promise<PhotoQualityScore[]> {
+        if (this.isTerminated) {
+            return Promise.reject(
+                new Error("The analysis worker has already been stopped.")
+            );
+        }
+
+        const requestId = this.nextRequestId;
+        this.nextRequestId += 1;
+
+        const request: AnalysisWorkerRequest = {
+            type: "rank-photos",
+            requestId,
+            photos: [...photos]
+        };
+
+        return new Promise((resolve, reject) => {
+            this.pendingRequests.set(requestId, {
+                type: "rank-photos",
+                resolve,
+                reject
+            });
+
+            try {
+                this.worker.postMessage(request);
+            } catch (error) {
+                this.pendingRequests.delete(requestId);
+                reject(
+                    error instanceof Error
+                        ? error
+                        : new Error("Unable to send photo metrics to the worker.")
+                );
+            }
+        });
+    }
+
     terminate(): void {
         if (this.isTerminated) {
             return;
@@ -174,6 +221,14 @@ export class AnalysisWorkerClient {
                 }
                 break;
             case "grouping-failure":
+                pending.reject(new Error(response.message));
+                break;
+            case "ranking-success":
+                if (pending.type === "rank-photos") {
+                    pending.resolve(response.scores);
+                }
+                break;
+            case "ranking-failure":
                 pending.reject(new Error(response.message));
                 break;
         }

@@ -9,7 +9,12 @@ import {
 } from "./photos/photoValidation";
 import type { DecodedPhoto, RejectedFile } from "./photos/types";
 import { AnalysisWorkerClient } from "./workers/AnalysisWorkerClient";
-import type { PhotoAnalysis, SimilarityGroup } from "./wasm/types";
+import type {
+    PhotoAnalysis,
+    PhotoMetrics,
+    PhotoQualityScore,
+    SimilarityGroup
+} from "./wasm/types";
 
 interface DecodeProgress {
     completed: number;
@@ -36,6 +41,18 @@ interface AnalysisProgress {
 type AnalysisStateByPhotoId = Record<number, PhotoAnalysisStatus>;
 
 type GroupingStatus = "idle" | "grouping" | "grouped" | "failed";
+
+interface RankingProgress {
+    completed: number;
+    total: number;
+}
+
+interface GroupRanking {
+    scores: PhotoQualityScore[];
+    error?: string;
+}
+
+type GroupRankingsByIndex = Record<number, GroupRanking>;
 
 function App() {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +89,13 @@ function App() {
     const [groupingError, setGroupingError] = useState<string | undefined>(
         undefined
     );
+    const [rankingProgress, setRankingProgress] = useState<RankingProgress>({
+        completed: 0,
+        total: 0
+    });
+    const [groupRankings, setGroupRankings] = useState<GroupRankingsByIndex>(
+        {}
+    );
 
     useEffect(() => {
         photosRef.current = photos;
@@ -101,6 +125,9 @@ function App() {
 
     const isDecoding = decodeProgress.completed < decodeProgress.total;
     const isAnalyzing = analysisProgress.completed < analysisProgress.total;
+    const isGrouping = groupingStatus === "grouping";
+    const isRanking = rankingProgress.completed < rankingProgress.total;
+    const isPipelineBusy = isAnalyzing || isGrouping || isRanking;
     const analyzedCount = useMemo(
         () =>
             Object.values(analysisState).filter(
@@ -123,6 +150,8 @@ function App() {
         setSimilarityGroups([]);
         setGroupingStatus("idle");
         setGroupingError(undefined);
+        setRankingProgress({ completed: 0, total: 0 });
+        setGroupRankings({});
     };
 
     const handleFiles = async (fileList: FileList | File[]) => {
@@ -205,7 +234,7 @@ function App() {
     };
 
     const analyzePhotos = async () => {
-        if (photosRef.current.length === 0 || isAnalyzing) {
+        if (photosRef.current.length === 0 || isPipelineBusy) {
             return;
         }
 
@@ -220,6 +249,8 @@ function App() {
         setGroupingError(undefined);
         setGroupingStatus("idle");
         setSimilarityGroups([]);
+        setRankingProgress({ completed: 0, total: 0 });
+        setGroupRankings({});
         setAnalysisProgress({
             completed: 0,
             total: photosRef.current.length
@@ -303,6 +334,58 @@ function App() {
 
                 setSimilarityGroups(groups);
                 setGroupingStatus("grouped");
+                setRankingProgress({ completed: 0, total: groups.length });
+
+                for (const [groupIndex, group] of groups.entries()) {
+                    if (analysisRunIdRef.current !== runId) {
+                        return;
+                    }
+
+                    try {
+                        const scores = await workerClient.rankPhotos(
+                            group.map((photoId) =>
+                                analysisToMetrics(
+                                    getAnalysisResult(
+                                        analysisResults,
+                                        photoId
+                                    )
+                                )
+                            )
+                        );
+                        validateQualityScores(scores, group);
+
+                        if (analysisRunIdRef.current !== runId) {
+                            return;
+                        }
+
+                        setGroupRankings((currentRankings) => ({
+                            ...currentRankings,
+                            [groupIndex]: { scores }
+                        }));
+                    } catch (error) {
+                        if (analysisRunIdRef.current !== runId) {
+                            return;
+                        }
+
+                        setGroupRankings((currentRankings) => ({
+                            ...currentRankings,
+                            [groupIndex]: {
+                                scores: [],
+                                error:
+                                    error instanceof Error
+                                        ? error.message
+                                        : "Photo ranking failed."
+                            }
+                        }));
+                    } finally {
+                        if (analysisRunIdRef.current === runId) {
+                            setRankingProgress((progress) => ({
+                                ...progress,
+                                completed: progress.completed + 1
+                            }));
+                        }
+                    }
+                }
             } catch (error) {
                 if (analysisRunIdRef.current !== runId) {
                     return;
@@ -406,6 +489,12 @@ function App() {
                     {groupingStatus === "grouping" ? (
                         <span>Grouping similar photos</span>
                     ) : null}
+                    {isRanking ? (
+                        <span>
+                            Ranking group {rankingProgress.completed + 1} of{" "}
+                            {rankingProgress.total}
+                        </span>
+                    ) : null}
                     <button
                         type="button"
                         className="primary-action"
@@ -413,7 +502,7 @@ function App() {
                             void analyzePhotos();
                         }}
                         disabled={
-                            photos.length === 0 || isDecoding || isAnalyzing
+                            photos.length === 0 || isDecoding || isPipelineBusy
                         }
                     >
                         Analyze photos
@@ -422,7 +511,7 @@ function App() {
                         type="button"
                         onClick={clearPhotos}
                         disabled={
-                            isAnalyzing ||
+                            isPipelineBusy ||
                             (photos.length === 0 && rejectedFiles.length === 0)
                         }
                     >
@@ -483,7 +572,7 @@ function App() {
                                 key={photo.id}
                                 photo={photo}
                                 status={analysisState[photo.id]}
-                                isRemoveDisabled={isAnalyzing}
+                                isRemoveDisabled={isPipelineBusy}
                                 onRemove={removePhoto}
                             />
                         ))}
@@ -507,8 +596,18 @@ function App() {
                                         {group.length === 1 ? "" : "s"}
                                     </span>
                                 </div>
+                                <RankingError
+                                    ranking={groupRankings[groupIndex]}
+                                />
+                                <p className="score-note">
+                                    Scores are relative within this similarity
+                                    group.
+                                </p>
                                 <div className="photo-grid">
-                                    {group.map((photoId) => {
+                                    {orderedGroupPhotoIds(
+                                        group,
+                                        groupRankings[groupIndex]
+                                    ).map((photoId) => {
                                         const photo = photos.find(
                                             (candidate) =>
                                                 candidate.id === photoId
@@ -525,7 +624,18 @@ function App() {
                                                 status={
                                                     analysisState[photo.id]
                                                 }
-                                                isRemoveDisabled={isAnalyzing}
+                                                qualityScore={scoreForPhoto(
+                                                    groupRankings[groupIndex],
+                                                    photo.id
+                                                )}
+                                                isRecommended={
+                                                    groupRankings[groupIndex]
+                                                        ?.scores[0]?.id ===
+                                                    photo.id
+                                                }
+                                                isRemoveDisabled={
+                                                    isPipelineBusy
+                                                }
                                                 onRemove={removePhoto}
                                             />
                                         );
@@ -552,16 +662,22 @@ function App() {
 function PhotoCard({
     photo,
     status,
+    qualityScore,
+    isRecommended = false,
     isRemoveDisabled,
     onRemove
 }: {
     photo: DecodedPhoto;
     status: PhotoAnalysisStatus | undefined;
+    qualityScore?: PhotoQualityScore;
+    isRecommended?: boolean;
     isRemoveDisabled: boolean;
     onRemove: (photoId: number) => void;
 }) {
     return (
-        <article className="photo-card">
+        <article
+            className={`photo-card ${isRecommended ? "is-recommended" : ""}`}
+        >
             <img src={photo.previewUrl} alt={photo.name} loading="lazy" />
             <div className="photo-details">
                 <h2>{photo.name}</h2>
@@ -569,6 +685,10 @@ function PhotoCard({
                     {photo.width} x {photo.height}
                 </span>
                 <AnalysisStatusSummary status={status} />
+                <QualityScoreSummary
+                    score={qualityScore}
+                    isRecommended={isRecommended}
+                />
             </div>
             <button
                 type="button"
@@ -580,6 +700,19 @@ function PhotoCard({
                 Remove
             </button>
         </article>
+    );
+}
+
+function RankingError({ ranking }: { ranking: GroupRanking | undefined }) {
+    if (ranking?.error === undefined) {
+        return null;
+    }
+
+    return (
+        <div className="notice error" role="alert">
+            <h3>Ranking error</h3>
+            <p>{ranking.error}</p>
+        </div>
     );
 }
 
@@ -673,6 +806,106 @@ function formatMetric(value: number): string {
     });
 }
 
+function QualityScoreSummary({
+    score,
+    isRecommended
+}: {
+    score: PhotoQualityScore | undefined;
+    isRecommended: boolean;
+}) {
+    if (score === undefined) {
+        return null;
+    }
+
+    return (
+        <div className="quality-summary">
+            {isRecommended ? (
+                <strong className="recommendation">Recommended</strong>
+            ) : null}
+            <span>Overall {formatPercentage(score.overallScore)}</span>
+            <span>Sharpness {formatPercentage(score.normalizedSharpness)}</span>
+            <span>Exposure {formatPercentage(score.exposureScore)}</span>
+            <span>Contrast {formatPercentage(score.normalizedContrast)}</span>
+            <span>{qualityExplanation(score)}</span>
+        </div>
+    );
+}
+
+function formatPercentage(value: number): string {
+    return `${Math.round(clamp01(value) * 100)}%`;
+}
+
+function qualityExplanation(score: PhotoQualityScore): string {
+    const clippingPenaltyLikely = score.exposureScore < 0.55;
+
+    if (clippingPenaltyLikely) {
+        return "Heavy clipping or exposure imbalance reduced its score.";
+    }
+
+    if (
+        score.normalizedSharpness >= score.exposureScore &&
+        score.normalizedSharpness >= score.normalizedContrast
+    ) {
+        return "Sharper than alternatives.";
+    }
+
+    if (score.exposureScore >= score.normalizedContrast) {
+        return "Better-balanced exposure.";
+    }
+
+    return "Stronger contrast.";
+}
+
+function clamp01(value: number): number {
+    if (!Number.isFinite(value)) {
+        return 0;
+    }
+
+    return Math.min(1, Math.max(0, value));
+}
+
+function orderedGroupPhotoIds(
+    group: readonly number[],
+    ranking: GroupRanking | undefined
+): number[] {
+    if (ranking === undefined || ranking.scores.length === 0) {
+        return [...group];
+    }
+
+    return ranking.scores.map((score) => score.id);
+}
+
+function scoreForPhoto(
+    ranking: GroupRanking | undefined,
+    photoId: number
+): PhotoQualityScore | undefined {
+    return ranking?.scores.find((score) => score.id === photoId);
+}
+
+function analysisToMetrics(analysis: PhotoAnalysis): PhotoMetrics {
+    return {
+        id: analysis.id,
+        sharpness: analysis.sharpness,
+        meanLuminance: analysis.meanLuminance,
+        shadowClippingRatio: analysis.shadowClippingRatio,
+        highlightClippingRatio: analysis.highlightClippingRatio,
+        contrast: analysis.contrast
+    };
+}
+
+function getAnalysisResult(
+    analysisResults: ReadonlyMap<number, PhotoAnalysis>,
+    photoId: number
+): PhotoAnalysis {
+    const analysis = analysisResults.get(photoId);
+
+    if (analysis === undefined) {
+        throw new Error("Ranking could not find an analyzed photo.");
+    }
+
+    return analysis;
+}
+
 function validateSimilarityGroups(
     groups: readonly SimilarityGroup[],
     analysisResults: ReadonlyMap<number, PhotoAnalysis>
@@ -701,6 +934,41 @@ function validateSimilarityGroups(
         throw new Error(
             "Similarity grouping did not include every analyzed photo."
         );
+    }
+}
+
+function validateQualityScores(
+    scores: readonly PhotoQualityScore[],
+    group: readonly number[]
+): void {
+    const expectedPhotoIds = new Set(group);
+    const seenPhotoIds = new Set<number>();
+
+    for (const score of scores) {
+        if (!expectedPhotoIds.has(score.id)) {
+            throw new Error("Ranking returned an unknown photo.");
+        }
+
+        if (seenPhotoIds.has(score.id)) {
+            throw new Error("Ranking returned a photo more than once.");
+        }
+
+        for (const value of [
+            score.normalizedSharpness,
+            score.exposureScore,
+            score.normalizedContrast,
+            score.overallScore
+        ]) {
+            if (!Number.isFinite(value)) {
+                throw new Error("Ranking returned a non-finite score.");
+            }
+        }
+
+        seenPhotoIds.add(score.id);
+    }
+
+    if (seenPhotoIds.size !== expectedPhotoIds.size) {
+        throw new Error("Ranking did not include every photo in the group.");
     }
 }
 

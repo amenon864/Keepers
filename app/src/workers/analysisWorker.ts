@@ -3,6 +3,7 @@ import type {
     AnalyzePhotoRequest,
     AnalysisWorkerRequest,
     GroupPhotosRequest,
+    RankPhotosRequest,
     AnalysisWorkerResponse
 } from "./analysisProtocol";
 
@@ -20,6 +21,9 @@ async function handleRequest(request: AnalysisWorkerRequest): Promise<void> {
             break;
         case "group-photos":
             await groupPhotos(request);
+            break;
+        case "rank-photos":
+            await rankPhotos(request);
             break;
     }
 }
@@ -79,6 +83,25 @@ async function groupPhotos(request: GroupPhotosRequest): Promise<void> {
     } catch (error) {
         postResponse({
             type: "grouping-failure",
+            requestId: request.requestId,
+            message: readableWorkerError(error)
+        });
+    }
+}
+
+async function rankPhotos(request: RankPhotosRequest): Promise<void> {
+    try {
+        const client = await getKeepersClient();
+        const scores = client.rankPhotoQuality(request.photos);
+
+        postResponse({
+            type: "ranking-success",
+            requestId: request.requestId,
+            scores
+        });
+    } catch (error) {
+        postResponse({
+            type: "ranking-failure",
             requestId: request.requestId,
             message: readableWorkerError(error)
         });
