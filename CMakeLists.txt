@@ -9,3 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
 
 add_subdirectory(engine)
+
+if(EMSCRIPTEN)
+    add_subdirectory(wasm)
+endif()
