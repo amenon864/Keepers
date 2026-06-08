@@ -20,6 +20,7 @@ add_executable(keepers_engine_tests
     grayscale_test.cpp
     image_metrics_test.cpp
     image_view_test.cpp
+    photo_analysis_test.cpp
     photo_quality_test.cpp
     sharpness_test.cpp
     similarity_grouping_test.cpp

@@ -3,6 +3,7 @@ add_library(keepers_engine STATIC
     src/grayscale.cpp
     src/image_metrics.cpp
     src/image_view.cpp
+    src/photo_analysis.cpp
     src/photo_quality.cpp
     src/sharpness.cpp
     src/similarity_grouping.cpp
