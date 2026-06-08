@@ -16,6 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
 include(Catch)
 
 add_executable(burstpick_engine_tests
+    grayscale_test.cpp
     image_view_test.cpp
     version_test.cpp
 )
