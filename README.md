@@ -109,7 +109,10 @@ npm run lint
 npm run build
 ```
 
-Run the browser smoke test against a production build with real WASM artifacts:
+## Browser End-to-End Test
+
+Run the Playwright browser smoke test against a production build with real WASM
+artifacts:
 
 ```bash
 ./scripts/build-wasm.sh
@@ -123,8 +126,9 @@ npm run test:e2e
 ```
 
 The browser smoke test exercises image upload, browser decoding, Web Worker
-analysis, WASM loading, similarity grouping, ranking, and recommendation
-rendering.
+startup, WASM module and binary loading, per-photo analysis, similarity
+grouping, quality ranking, recommendation rendering, and clearing/resetting the
+workflow. CI runs this test in Chromium.
 
 ## Development Status
 
