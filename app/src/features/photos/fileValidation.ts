@@ -1,4 +1,4 @@
-import type { RejectedFile } from "./types";
+import type { FileRejection } from "./types";
 
 export const maximumPhotoCount = 50;
 export const maximumPhotoFileSizeBytes = 30 * 1024 * 1024;
@@ -11,7 +11,7 @@ export interface AcceptedPhotoFile {
 
 export interface ValidatedPhotoFiles {
     accepted: AcceptedPhotoFile[];
-    rejected: RejectedFile[];
+    rejected: FileRejection[];
 }
 
 export class SessionPhotoIdAllocator {
@@ -35,7 +35,7 @@ export function validatePhotoFiles(
     currentPhotoCount = 0
 ): ValidatedPhotoFiles {
     const accepted: AcceptedPhotoFile[] = [];
-    const rejected: RejectedFile[] = [];
+    const rejected: FileRejection[] = [];
     let availableSlots = Math.max(0, maximumPhotoCount - currentPhotoCount);
 
     for (const file of files) {
@@ -70,7 +70,7 @@ export function validatePhotoFiles(
     return { accepted, rejected };
 }
 
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
     const mib = bytes / (1024 * 1024);
     return `${mib.toLocaleString(undefined, {
         maximumFractionDigits: 0

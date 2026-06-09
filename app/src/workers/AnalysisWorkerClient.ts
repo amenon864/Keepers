@@ -1,4 +1,4 @@
-import type { DecodedPhoto } from "../photos/types";
+import type { DecodedPhoto } from "../features/photos/types";
 import type {
     PhotoAnalysis,
     PhotoHash,

@@ -41,7 +41,9 @@ async function createImageBitmapWithOrientation(
 
 function readImageData(imageBitmap: ImageBitmap): ImageData {
     const canvas = createCanvas(imageBitmap.width, imageBitmap.height);
-    const context = canvas.getContext("2d", { willReadFrequently: true });
+    const context = canvas.getContext("2d", {
+        willReadFrequently: true
+    }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
 
     if (context === null) {
         throw new Error("This browser could not create a 2D canvas context.");
