@@ -6,6 +6,9 @@ dist/
 dist-ssr/
 .vite/
 *.local
+app/playwright-report/
+app/test-results/
+app/blob-report/
 
 # Logs
 logs/

@@ -117,6 +117,10 @@ jobs:
               working-directory: app
               run: npm ci
 
+            - name: Run frontend lint
+              working-directory: app
+              run: npm run lint
+
             - name: Build frontend with WebAssembly
               working-directory: app
               run: npm run build
@@ -125,3 +129,21 @@ jobs:
               run: |
                   test -f app/dist/assets/generated/keepers.mjs
                   test -f app/dist/assets/generated/keepers.wasm
+
+            - name: Install Chromium for Playwright
+              working-directory: app
+              run: npx playwright install --with-deps chromium
+
+            - name: Run browser smoke test
+              working-directory: app
+              run: npm run test:e2e
+
+            - name: Upload Playwright diagnostics
+              if: failure()
+              uses: actions/upload-artifact@v5
+              with:
+                  name: playwright-report
+                  path: |
+                      app/playwright-report/
+                      app/test-results/
+                  retention-days: 7

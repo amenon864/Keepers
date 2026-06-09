@@ -109,6 +109,23 @@ npm run lint
 npm run build
 ```
 
+Run the browser smoke test against a production build with real WASM artifacts:
+
+```bash
+./scripts/build-wasm.sh
+./scripts/copy-wasm-to-app.sh
+
+cd app
+npm ci
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+The browser smoke test exercises image upload, browser decoding, Web Worker
+analysis, WASM loading, similarity grouping, ranking, and recommendation
+rendering.
+
 ## Development Status
 
 The native C++ engine currently supports image validation, grayscale conversion,
